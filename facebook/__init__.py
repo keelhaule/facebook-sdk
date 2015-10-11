@@ -31,6 +31,7 @@ import base64
 import requests
 import json
 import re
+from urlparse import urlparse, parse_qs
 
 try:
     from urllib.parse import parse_qs, urlencode
@@ -80,7 +81,7 @@ class GraphAPI(object):
     def __init__(self, access_token=None, timeout=None, version=None,
                  proxies=None):
         # The default version is only used if the version kwarg does not exist.
-        default_version = "2.0"
+        default_version = "2.4"
 
         self.access_token = access_token
         self.timeout = timeout
@@ -114,10 +115,25 @@ class GraphAPI(object):
         args["ids"] = ",".join(ids)
         return self.request(self.version + "/", args)
 
-    def get_connections(self, id, connection_name, **args):
+    def get_connections(self, id, connection_name, args):
         """Fetchs the connections for given object."""
         return self.request(
             "%s/%s/%s" % (self.version, id, connection_name), args)
+
+    def get_connections_paging(self,id, connection_name, args):
+        """Gets paging of a connections
+
+        """
+        response = self.request(
+            "%s/%s/%s" % (self.version, id, connection_name), args)
+        yield response
+        
+        while 'paging' in response:     
+            next = response['paging']['next']
+            request = urlparse(next)
+            response = self.request(request.path, parse_qs(request.query))
+            yield response
+            
 
     def put_object(self, parent_object, connection_name, **data):
         """Writes the given object to the graph, connected to the given parent.
